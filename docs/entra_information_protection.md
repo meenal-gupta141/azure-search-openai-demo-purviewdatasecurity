@@ -437,6 +437,9 @@ async def apply_response_protection(
     """
     Apply appropriate protection to chat response based on source documents.
     
+    Note: Import current_app from quart at the top of your approach file:
+    from quart import current_app
+    
     Args:
         response_content: Generated chat response
         document_labels: Labels from source documents used

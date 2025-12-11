@@ -62,6 +62,8 @@ if os.getenv("AZURE_ENABLE_INFORMATION_PROTECTION", "").lower() == "true":
 
 ```python
 # Add to your approach class (e.g., ChatReadRetrieveReadApproach)
+# Note: Import current_app from quart at the top of your file:
+# from quart import current_app
 
 async def run(self, messages, context, session_state):
     # Your existing code...
