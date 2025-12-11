@@ -12,6 +12,7 @@ These are advanced topics that are not necessary for a basic deployment.
   - [Enabling optional features](deploy_features.md)
     - [All features](docs/deploy_features.md)
     - [Login and access control](login_and_acl.md)
+    - [Entra Information Protection Service integration](entra_information_protection.md)
     - [GPT-4 Turbo with Vision](gpt4v.md)
     - [Private endpoints](deploy_private.md)
     - [Agentic retrieval](agentic_retrieval.md)

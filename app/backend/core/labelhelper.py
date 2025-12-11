@@ -1,15 +1,21 @@
 """
 Sensitivity Label Helper for Microsoft Purview Integration
 Handles extraction, inheritance, and display of sensitivity labels from search results.
+
+This module integrates with Microsoft Entra Information Protection Service (IS) to provide
+enhanced label management capabilities including policy retrieval and label resolution.
 """
 
 import uuid
 import os
 import time
-from typing import Optional, List, Dict, Tuple, Set
+from typing import Optional, List, Dict, Tuple, Set, TYPE_CHECKING
 from dataclasses import dataclass
 import aiohttp
 import logging
+
+if TYPE_CHECKING:
+    from core.information_protection import InformationProtectionClient
 
 class LabelError(Exception):
     """Base exception for label-related errors"""
@@ -271,6 +277,117 @@ class LabelHelper:
             priority=0,
             icon=self._config.DEFAULT_ICON
         )
+    
+    async def get_active_policies(
+        self,
+        ip_client: 'InformationProtectionClient'
+    ) -> List[Dict]:
+        """
+        Retrieve active Information Protection policies using Entra IS client.
+        
+        This method integrates with the InformationProtectionClient to retrieve
+        and cache sensitivity label policies from Microsoft Entra IS.
+        
+        Args:
+            ip_client: InformationProtectionClient instance
+            
+        Returns:
+            List of active protection policies with their labels
+            
+        Example:
+            ```python
+            from core.information_protection import InformationProtectionClient
+            
+            ip_client = InformationProtectionClient(tenant_id, credential)
+            policies = await label_helper.get_active_policies(ip_client)
+            ```
+        """
+        try:
+            policies = await ip_client.get_label_policies()
+            
+            # Filter to active policies only
+            active_policies = [
+                policy for policy in policies
+                if policy.get("isActive", False)
+            ]
+            
+            # Cache labels from policies for faster lookups
+            for policy in active_policies:
+                policy_id = policy.get("id")
+                if policy_id:
+                    labels = policy.get("labels", [])
+                    for label in labels:
+                        label_id = label.get("id")
+                        if label_id:
+                            # Create and cache the label
+                            sensitivity_label = SensitivityLabel(
+                                id=label_id,
+                                name=label.get("name", ""),
+                                display_name=label.get("displayName"),
+                                color=label.get("color", self._config.DEFAULT_COLOR),
+                                priority=label.get("priority", 0),
+                                icon=self._config.SUCCESS_ICON
+                            )
+                            self._cache_label(label_id, sensitivity_label)
+                            
+                            logging.info(
+                                "Cached label from policy: %s (ID: %s)",
+                                sensitivity_label.display_name,
+                                label_id
+                            )
+            
+            return active_policies
+        except Exception as e:
+            logging.exception("Error retrieving active policies: %s", e)
+            return []
+    
+    async def resolve_label_with_ip_client(
+        self,
+        label_id: str,
+        ip_client: 'InformationProtectionClient'
+    ) -> Optional[SensitivityLabel]:
+        """
+        Resolve a label using the Information Protection client as fallback.
+        
+        This method tries to resolve a label using:
+        1. Local cache
+        2. Graph API (existing method)
+        3. Information Protection client (fallback)
+        
+        Args:
+            label_id: Label GUID to resolve
+            ip_client: InformationProtectionClient instance
+            
+        Returns:
+            Resolved SensitivityLabel or None
+        """
+        # Try cache first
+        if cached := self._get_cached_label(label_id):
+            return cached
+        
+        # Try existing Graph API resolution
+        resolved = await self._resolve_purview_label(label_id, None)
+        if resolved:
+            return resolved
+        
+        # Fallback to IP client
+        try:
+            label_data = await ip_client.get_label_by_id(label_id)
+            if label_data:
+                label = SensitivityLabel(
+                    id=label_id,
+                    name=label_data.get("name", ""),
+                    display_name=label_data.get("displayName"),
+                    color=label_data.get("color", self._config.DEFAULT_COLOR),
+                    priority=label_data.get("priority", 0),
+                    icon=self._config.SUCCESS_ICON
+                )
+                self._cache_label(label_id, label)
+                return label
+        except Exception as e:
+            logging.warning("IP client fallback failed for label %s: %s", label_id, e)
+        
+        return None
             
     async def compute_label_inheritance(self, document_labels: list[DocumentLabel]) -> ResponseSensitivity:
         """Compute the overall sensitivity label for a response based on document labels."""
