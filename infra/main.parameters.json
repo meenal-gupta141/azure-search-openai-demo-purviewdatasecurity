@@ -68,8 +68,11 @@
     "searchServiceLocation": {
       "value": "${AZURE_SEARCH_SERVICE_LOCATION}"
     },
+    "searchServicePrincipalId": {
+      "value": "${AZURE_SEARCH_SERVICE_ASSIGNED_USERID}"
+    },
     "searchServiceSkuName": {
-      "value": "${AZURE_SEARCH_SERVICE_SKU=basic}"
+      "value": "${AZURE_SEARCH_SERVICE_SKU=standard}"
     },
     "searchQueryLanguage": {
       "value": "${AZURE_SEARCH_QUERY_LANGUAGE=en-us}"
@@ -94,6 +97,9 @@
     },
     "storageResourceGroupName": {
       "value": "${AZURE_STORAGE_RESOURCE_GROUP}"
+    },
+    "storageContainerName": {
+      "value": "${AZURE_STORAGE_CONTAINER=content}"
     },
     "storageSkuName": {
       "value": "${AZURE_STORAGE_SKU=Standard_LRS}"
